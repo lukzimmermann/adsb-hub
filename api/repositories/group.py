@@ -10,34 +10,42 @@ from shared.models.database import group_registrations
 
 
 class GroupRepository:
-    async def get(self, name: str) -> AircraftGroup | None:
+    async def get(self, name: str, owner_user_id: int) -> AircraftGroup | None:
         async with get_session() as session:
             return await session.scalar(
                 select(AircraftGroup)
                 .options(selectinload(AircraftGroup.registrations))
-                .where(AircraftGroup.name == name)
+                .where(
+                    AircraftGroup.name == name,
+                    AircraftGroup.owner_user_id == owner_user_id,
+                )
             )
 
-    async def list_groups(self) -> list[AircraftGroup]:
+    async def list_groups(self, owner_user_id: int) -> list[AircraftGroup]:
         async with get_session() as session:
             result = await session.scalars(
-                select(AircraftGroup).order_by(AircraftGroup.name)
+                select(AircraftGroup)
+                .where(AircraftGroup.owner_user_id == owner_user_id)
+                .order_by(AircraftGroup.name)
                 .options(selectinload(AircraftGroup.registrations))
             )
             return list(result.unique().all())
 
-    async def create(self, name: str) -> AircraftGroup:
+    async def create(self, name: str, owner_user_id: int) -> AircraftGroup:
         async with get_session() as session:
-            group = AircraftGroup(name=name)
+            group = AircraftGroup(name=name, owner_user_id=owner_user_id)
             session.add(group)
             await session.commit()
             await session.refresh(group)
             return group
 
-    async def delete(self, name: str) -> bool:
+    async def delete(self, name: str, owner_user_id: int) -> bool:
         async with get_session() as session:
             group = await session.scalar(
-                select(AircraftGroup).where(AircraftGroup.name == name)
+                select(AircraftGroup).where(
+                    AircraftGroup.name == name,
+                    AircraftGroup.owner_user_id == owner_user_id,
+                )
             )
             if group is None:
                 return False
@@ -45,10 +53,15 @@ class GroupRepository:
             await session.commit()
             return True
 
-    async def add_registration(self, group_name: str, registration: str) -> bool:
+    async def add_registration(
+        self, group_name: str, registration: str, owner_user_id: int
+    ) -> bool:
         async with get_session() as session:
             group = await session.scalar(
-                select(AircraftGroup).where(AircraftGroup.name == group_name)
+                select(AircraftGroup).where(
+                    AircraftGroup.name == group_name,
+                    AircraftGroup.owner_user_id == owner_user_id,
+                )
             )
             if group is None:
                 return False
@@ -65,10 +78,15 @@ class GroupRepository:
             await session.commit()
             return True
 
-    async def remove_registration(self, group_name: str, registration: str) -> bool:
+    async def remove_registration(
+        self, group_name: str, registration: str, owner_user_id: int
+    ) -> bool:
         async with get_session() as session:
             group = await session.scalar(
-                select(AircraftGroup).where(AircraftGroup.name == group_name)
+                select(AircraftGroup).where(
+                    AircraftGroup.name == group_name,
+                    AircraftGroup.owner_user_id == owner_user_id,
+                )
             )
             if group is None:
                 return False
@@ -81,16 +99,44 @@ class GroupRepository:
             await session.commit()
             return True
 
-    async def delete_registration(self, registration: str) -> bool:
+    async def delete_registration(self, registration: str, owner_user_id: int) -> bool:
+        """Remove a registration from all of the user's groups.
+
+        The shared registration row is only deleted once no group (of any
+        user) references it anymore.
+        """
         async with get_session() as session:
             aircraft = await session.get(AircraftRegistration, registration)
             if aircraft is None:
                 return False
-            await session.delete(aircraft)
+
+            result = await session.execute(
+                delete(group_registrations).where(
+                    group_registrations.c.registration == registration,
+                    group_registrations.c.group_id.in_(
+                        select(AircraftGroup.id).where(
+                            AircraftGroup.owner_user_id == owner_user_id
+                        )
+                    ),
+                )
+            )
+            if result.rowcount == 0:
+                await session.rollback()
+                return False
+
+            still_referenced = await session.scalar(
+                select(group_registrations.c.group_id)
+                .where(group_registrations.c.registration == registration)
+                .limit(1)
+            )
+            if still_referenced is None:
+                await session.delete(aircraft)
             await session.commit()
             return True
 
-    async def get_current_aircraft(self, name: str) -> Sequence[AircraftPosition]:
+    async def get_current_aircraft(
+        self, name: str, owner_user_id: int
+    ) -> Sequence[AircraftPosition]:
         async with get_session() as session:
             latest_fetch = select(func.max(AircraftPosition.recorded_at)).scalar_subquery()
             result = await session.scalars(
@@ -106,7 +152,10 @@ class GroupRepository:
                     == AircraftRegistration.registration,
                 )
                 .join(AircraftGroup, AircraftGroup.id == group_registrations.c.group_id)
-                .where(AircraftGroup.name == name)
+                .where(
+                    AircraftGroup.name == name,
+                    AircraftGroup.owner_user_id == owner_user_id,
+                )
                 .order_by(AircraftPosition.registration)
             )
             return list(result.all())

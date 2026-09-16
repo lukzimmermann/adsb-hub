@@ -50,6 +50,9 @@ available at `http://localhost:8000/docs`.
 Important endpoints:
 
 ```text
+POST   /api/v1/auth/login
+POST   /api/v1/auth/logout
+GET    /api/v1/auth/me
 GET    /api/v1/aircraft
 GET    /api/v1/aircraft/{registration}/history?limit=100
 GET    /api/v1/groups
@@ -60,6 +63,63 @@ POST   /api/v1/groups/{group_name}/registrations
 DELETE /api/v1/groups/{group_name}/registrations/{registration}
 DELETE /api/v1/registrations/{registration}
 ```
+
+## Authentication
+
+`GET /api/v1/aircraft` is public but rate-limited to one request per
+`AIRCRAFT_RATE_LIMIT_SECONDS` (default 60s) per client IP when not
+authenticated. Everything under `/api/v1/groups` and
+`/api/v1/registrations`, and an authenticated call to `/api/v1/aircraft`
+(no rate limit), require a session.
+
+Log in to get a session cookie:
+
+```bash
+curl -c cookies.txt -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "you", "password": "..."}'
+
+curl -b cookies.txt http://localhost:8000/api/v1/groups
+```
+
+The session is a JWT in an httpOnly cookie (`access_token`), valid for
+`JWT_EXPIRES_MINUTES` (default 24h). Groups belong to the user that created
+them; each user only sees and manages their own groups.
+
+To test protected endpoints from the Swagger UI at `/docs`, click
+**Authorize** and enter your username/password there — Swagger fetches a
+token from `/api/v1/auth/token` (a second, OAuth2-password-flow login
+endpoint used only for this) and attaches it as a `Bearer` token to every
+subsequent "Try it out" call.
+
+There is no signup endpoint. Users are created via the CLI, using the same
+image as the `api` service:
+
+```bash
+docker compose run --rm api uv run python -m api.cli create-user --username you
+```
+
+It prompts for a password (and confirmation) interactively and hashes it
+with bcrypt before storing it.
+
+Set `JWT_SECRET` in `.env` to a long random value (e.g.
+`python3 -c "import secrets; print(secrets.token_urlsafe(48))"`) — the
+built-in default is only for local development. Set `COOKIE_SECURE=true`
+once the API is served over HTTPS.
+
+### Behind a reverse proxy
+
+The per-IP rate limit on `/api/v1/aircraft` uses the connecting client's IP.
+Behind a reverse proxy, that would be the proxy's IP for every request, so
+uvicorn is configured (via `--proxy-headers`, on by default) to read the real
+client IP from `X-Forwarded-For` instead — but only from addresses listed in
+`FORWARDED_ALLOW_IPS` (`.env`), since that header is otherwise trivial for a
+client to fake. `FORWARDED_ALLOW_IPS=*` (the current default) trusts it from
+anyone, which is only safe if the API's port is not reachable directly and
+the reverse proxy is the sole entry point. Once the proxy's address is fixed,
+narrow `FORWARDED_ALLOW_IPS` to its IP/CIDR, and make sure the `api` service's
+port mapping in `docker-compose.yml` isn't published to the public internet
+alongside the proxy.
 
 Start the complete stack:
 
@@ -114,9 +174,13 @@ collector/service.py            Collector polling workflow
 collector/config.py             capture-area config loader (config.yaml)
 
 api/main.py                     FastAPI app setup (ASGI entry point: api.main:app)
+api/settings.py                 Auth/rate-limit environment variables
+api/auth.py                     Password hashing, JWT issuing/verification
+api/rate_limit.py               In-memory rate limiter for anonymous requests
+api/cli.py                      User-management CLI (create-user)
 api/routers/                    FastAPI routers
 api/services/                   Request-handling business workflows
-api/repositories/               Database access specific to the API (groups)
+api/repositories/               Database access specific to the API (users, groups)
 api/schemas.py                  API request/response models
 
 shared/database.py              SQLAlchemy engine/session setup

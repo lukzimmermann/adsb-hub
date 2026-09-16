@@ -59,3 +59,17 @@ class GroupResponse(BaseModel):
 
 class RegistrationRequest(BaseModel):
     registration: str = Field(min_length=1, max_length=32)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1)
+
+
+class UserResponse(BaseModel):
+    username: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

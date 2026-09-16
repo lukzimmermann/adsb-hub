@@ -1,15 +1,25 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, Request
 
+from api.auth import AuthenticatedUser, get_optional_user
+from api.rate_limit import FixedWindowRateLimiter, client_key
 from api.schemas import AircraftPositionResponse
 from api.services import AircraftService
+from api.settings import load_settings
 from shared.repositories import AircraftPositionRepository
 
 router = APIRouter(prefix="/api/v1/aircraft", tags=["aircraft"])
 service = AircraftService(AircraftPositionRepository())
+settings = load_settings()
+rate_limiter = FixedWindowRateLimiter(settings.aircraft_rate_limit_seconds)
 
 
 @router.get("", response_model=list[AircraftPositionResponse])
-async def get_current_aircraft() -> list[AircraftPositionResponse]:
+async def get_current_aircraft(
+    request: Request,
+    user: AuthenticatedUser | None = Depends(get_optional_user),
+) -> list[AircraftPositionResponse]:
+    if user is None:
+        rate_limiter.check(client_key(request))
     return await service.get_current()
 
 

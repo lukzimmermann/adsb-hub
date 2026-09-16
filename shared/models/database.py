@@ -4,7 +4,7 @@ from typing import Any
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import (BigInteger, Column, DateTime, Float, ForeignKey, Index,
-                        Integer, String, Table, Text, func)
+                        Integer, String, Table, Text, UniqueConstraint, func)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -27,11 +27,28 @@ group_registrations = Table(
 )
 
 
-class AircraftGroup(Base):
-    __tablename__ = "aircraft_groups"
+class User(Base):
+    __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    groups: Mapped[list["AircraftGroup"]] = relationship(back_populates="owner")
+
+
+class AircraftGroup(Base):
+    __tablename__ = "aircraft_groups"
+    __table_args__ = (UniqueConstraint("owner_user_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    owner_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    owner: Mapped[User] = relationship(back_populates="groups")
     registrations: Mapped[list["AircraftRegistration"]] = relationship(
         secondary=group_registrations,
         back_populates="groups",

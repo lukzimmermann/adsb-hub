@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from api.auth import AuthenticatedUser, get_current_user
 from api.repositories import GroupRepository
 from api.schemas import (AircraftPositionResponse, GroupCreateRequest,
                          GroupResponse, RegistrationRequest)
@@ -18,41 +19,49 @@ def to_response(group) -> GroupResponse:
 
 
 @router.get("", response_model=list[GroupResponse])
-async def get_groups() -> list[GroupResponse]:
-    return [to_response(group) for group in await service.list()]
+async def get_groups(user: AuthenticatedUser = Depends(get_current_user)) -> list[GroupResponse]:
+    return [to_response(group) for group in await service.list(user.id)]
 
 
 @router.post("", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
-async def create_group(request: GroupCreateRequest) -> GroupResponse:
+async def create_group(
+    request: GroupCreateRequest, user: AuthenticatedUser = Depends(get_current_user)
+) -> GroupResponse:
     try:
-        group = await service.create(request.name)
+        group = await service.create(request.name, user.id)
     except GroupAlreadyExistsError as error:
         raise HTTPException(status_code=409, detail="Group already exists") from error
     return GroupResponse(name=group.name, registrations=[])
 
 
 @router.delete("/{group_name}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_group(group_name: str) -> None:
+async def delete_group(
+    group_name: str, user: AuthenticatedUser = Depends(get_current_user)
+) -> None:
     try:
-        await service.delete(group_name)
+        await service.delete(group_name, user.id)
     except GroupNotFoundError as error:
         raise HTTPException(status_code=404, detail="Group not found") from error
 
 
 @router.get("/{group_name}/aircraft", response_model=list[AircraftPositionResponse])
-async def get_group_aircraft(group_name: str):
+async def get_group_aircraft(
+    group_name: str, user: AuthenticatedUser = Depends(get_current_user)
+):
     try:
-        return await service.current_aircraft(group_name)
+        return await service.current_aircraft(group_name, user.id)
     except GroupNotFoundError as error:
         raise HTTPException(status_code=404, detail="Group not found") from error
 
 
 @router.post("/{group_name}/registrations", response_model=GroupResponse)
 async def add_registration(
-    group_name: str, request: RegistrationRequest
+    group_name: str,
+    request: RegistrationRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
 ) -> GroupResponse:
     try:
-        group = await service.add_registration(group_name, request.registration)
+        group = await service.add_registration(group_name, request.registration, user.id)
     except GroupNotFoundError as error:
         raise HTTPException(status_code=404, detail="Group not found") from error
     return to_response(group)
@@ -62,9 +71,10 @@ async def add_registration(
     "/{group_name}/registrations/{registration}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def remove_registration(group_name: str, registration: str) -> None:
+async def remove_registration(
+    group_name: str, registration: str, user: AuthenticatedUser = Depends(get_current_user)
+) -> None:
     try:
-        await service.remove_registration(group_name, registration)
+        await service.remove_registration(group_name, registration, user.id)
     except GroupNotFoundError as error:
         raise HTTPException(status_code=404, detail="Group not found") from error
-

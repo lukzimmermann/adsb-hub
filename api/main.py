@@ -4,6 +4,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 
 from api.routers.aircraft import router as aircraft_router
+from api.routers.auth import router as auth_router
 from api.routers.groups import router as groups_router
 from api.routers.registrations import router as registrations_router
 from api.routers.system import router as system_router
@@ -22,6 +23,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(system_router)
+app.include_router(auth_router)
 app.include_router(aircraft_router)
 app.include_router(groups_router)
 app.include_router(registrations_router)
