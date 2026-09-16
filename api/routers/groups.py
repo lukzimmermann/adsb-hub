@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.repositories import GroupRepository
-from app.schemas import (AircraftPositionResponse, GroupCreateRequest,
+from api.repositories import GroupRepository
+from api.schemas import (AircraftPositionResponse, GroupCreateRequest,
                          GroupResponse, RegistrationRequest)
-from app.services import (GroupAlreadyExistsError, GroupNotFoundError,
+from api.services import (GroupAlreadyExistsError, GroupNotFoundError,
                           GroupService)
 
 router = APIRouter(prefix="/api/v1/groups", tags=["groups"])

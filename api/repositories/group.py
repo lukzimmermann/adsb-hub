@@ -4,9 +4,9 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload
 
-from app.database import get_session
-from app.models import AircraftGroup, AircraftPosition, AircraftRegistration
-from app.models.database import group_registrations
+from shared.database import get_session
+from shared.models import AircraftGroup, AircraftPosition, AircraftRegistration
+from shared.models.database import group_registrations
 
 
 class GroupRepository:
@@ -91,17 +91,11 @@ class GroupRepository:
             return True
 
     async def get_current_aircraft(self, name: str) -> Sequence[AircraftPosition]:
-        latest_positions = select(
-            AircraftPosition.transponder_code,
-            func.max(AircraftPosition.id).label("position_id"),
-        ).group_by(AircraftPosition.transponder_code).subquery()
         async with get_session() as session:
+            latest_fetch = select(func.max(AircraftPosition.recorded_at)).scalar_subquery()
             result = await session.scalars(
                 select(AircraftPosition)
-                .join(
-                    latest_positions,
-                    AircraftPosition.id == latest_positions.c.position_id,
-                )
+                .where(AircraftPosition.recorded_at == latest_fetch)
                 .join(
                     AircraftRegistration,
                     AircraftRegistration.registration == AircraftPosition.registration,

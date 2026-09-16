@@ -3,11 +3,11 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 
-from app.api.aircraft import router as aircraft_router
-from app.api.groups import router as groups_router
-from app.api.registrations import router as registrations_router
-from app.api.system import router as system_router
-from app.database import engine
+from api.routers.aircraft import router as aircraft_router
+from api.routers.groups import router as groups_router
+from api.routers.registrations import router as registrations_router
+from api.routers.system import router as system_router
+from shared.database import engine
 
 
 @asynccontextmanager

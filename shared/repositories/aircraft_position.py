@@ -2,22 +2,17 @@ from collections.abc import Sequence
 
 from sqlalchemy import func, select
 
-from app.database import get_session
-from app.models import Aircraft, AircraftPosition
+from shared.database import get_session
+from shared.models import Aircraft, AircraftPosition
 
 
 class AircraftPositionRepository:
-    @staticmethod
-    def _latest_position_ids():
-        return select(func.max(AircraftPosition.id)).group_by(
-            AircraftPosition.transponder_code
-        )
-
     async def get_current(self) -> list[AircraftPosition]:
         async with get_session() as session:
+            latest_fetch = select(func.max(AircraftPosition.recorded_at)).scalar_subquery()
             result = await session.scalars(
                 select(AircraftPosition)
-                .where(AircraftPosition.id.in_(self._latest_position_ids()))
+                .where(AircraftPosition.recorded_at == latest_fetch)
                 .order_by(AircraftPosition.callsign, AircraftPosition.registration)
             )
             return list(result.all())

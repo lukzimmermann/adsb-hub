@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Query
 
-from app.repositories import AircraftPositionRepository
-from app.schemas import AircraftPositionResponse
-from app.services import AircraftService
+from api.schemas import AircraftPositionResponse
+from api.services import AircraftService
+from shared.repositories import AircraftPositionRepository
 
 router = APIRouter(prefix="/api/v1/aircraft", tags=["aircraft"])
 service = AircraftService(AircraftPositionRepository())

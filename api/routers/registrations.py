@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.repositories import GroupRepository
-from app.services import GroupService, RegistrationNotFoundError
+from api.repositories import GroupRepository
+from api.services import GroupService, RegistrationNotFoundError
 
 router = APIRouter(prefix="/api/v1/registrations", tags=["registrations"])
 service = GroupService(GroupRepository())

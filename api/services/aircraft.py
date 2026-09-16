@@ -1,5 +1,5 @@
-from app.models import AircraftPosition
-from app.repositories import AircraftPositionRepository
+from shared.models import AircraftPosition
+from shared.repositories import AircraftPositionRepository
 
 
 class AircraftService:

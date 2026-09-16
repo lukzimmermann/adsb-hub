@@ -2,7 +2,7 @@ from typing import Any
 
 import httpx
 
-from app.models import Aircraft, Config
+from shared.models import Aircraft, Config
 
 KILOMETERS_PER_NAUTICAL_MILE = 1.852
 API_BASE_URL = "https://api.adsb.lol/v2/"

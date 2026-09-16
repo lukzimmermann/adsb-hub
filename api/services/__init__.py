@@ -1,5 +1,5 @@
-from app.services.aircraft import AircraftService
-from app.services.groups import (GroupAlreadyExistsError, GroupNotFoundError,
+from api.services.aircraft import AircraftService
+from api.services.groups import (GroupAlreadyExistsError, GroupNotFoundError,
                                  GroupService, RegistrationNotFoundError)
 
 __all__ = [

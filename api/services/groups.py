@@ -2,8 +2,8 @@ from collections.abc import Sequence
 
 from sqlalchemy.exc import IntegrityError
 
-from app.models import AircraftGroup, AircraftPosition
-from app.repositories import GroupRepository
+from api.repositories import GroupRepository
+from shared.models import AircraftGroup, AircraftPosition
 
 
 class GroupNotFoundError(Exception):

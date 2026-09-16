@@ -3,12 +3,12 @@ import logging
 
 import httpx
 
-from app.config import load_config
-from app.database import engine
-from app.flight_data import FlightDataRetriever
-from app.repositories import AircraftPositionRepository
-from app.service import FlightDataService
-from app.settings import load_settings
+from collector.config import load_config
+from collector.flight_data import FlightDataRetriever
+from collector.service import FlightDataService
+from collector.settings import load_settings
+from shared.database import engine
+from shared.repositories import AircraftPositionRepository
 
 logger = logging.getLogger(__name__)
 

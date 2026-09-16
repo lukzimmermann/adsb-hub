@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from app.flight_data import FlightDataRetriever
-from app.repositories import AircraftPositionRepository
+from collector.flight_data import FlightDataRetriever
+from shared.repositories import AircraftPositionRepository
 
 logger = logging.getLogger(__name__)
 

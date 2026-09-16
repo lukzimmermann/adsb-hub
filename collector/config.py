@@ -3,7 +3,7 @@ from typing import Any
 
 import yaml
 
-from app.models import Area, Center, Config
+from shared.models import Area, Center, Config
 
 
 def load_config(path: str | Path = "config.yaml") -> Config:
