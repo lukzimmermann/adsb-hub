@@ -183,10 +183,10 @@ export function GroupsPage() {
       <form onSubmit={handleCreate} className="flex gap-2">
         <input
           className={`flex-1 ${input}`}
-          placeholder="Neue Gruppe (z.B. meine-flotte)"
+          placeholder="Neue Gruppe (z.B. Meine Flotte)"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          pattern="[a-zA-Z0-9_-]+"
+          pattern="[a-zA-Z0-9 _-]+"
           required
         />
         <button type="submit" disabled={createGroup.isPending} className={buttonPrimary}>

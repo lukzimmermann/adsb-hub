@@ -93,7 +93,7 @@ class FlightDetailResponse(FlightResponse):
 
 
 class GroupCreateRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
+    name: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9 _-]+$")
 
 
 class GroupResponse(BaseModel):
