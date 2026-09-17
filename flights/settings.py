@@ -18,6 +18,7 @@ class Settings:
     interval_seconds: float = _positive_float("FLIGHT_CLOSE_INTERVAL_SECONDS", 60)
     gap_threshold_seconds: float = _positive_float("FLIGHT_GAP_THRESHOLD_SECONDS", 300)
     airport_match_radius_meters: float = _positive_float("AIRPORT_MATCH_RADIUS_METERS", 5000)
+    min_flight_duration_seconds: float = _positive_float("MIN_FLIGHT_DURATION_SECONDS", 300)
 
 
 def load_settings() -> Settings:

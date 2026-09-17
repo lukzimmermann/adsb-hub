@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
@@ -55,6 +55,7 @@ class FlightRepository:
         transponder_code: str,
         points: Sequence[AircraftPosition],
         airport_match_radius_meters: float,
+        min_duration_seconds: float,
     ) -> Flight:
         """Create a flight for points and tag them with it, in one transaction.
 
@@ -63,8 +64,21 @@ class FlightRepository:
         transaction starts leaves nothing changed. Either way, a re-run is
         idempotent because already-tagged positions drop out of the
         "flight_id IS NULL" working set.
+
+        Flights shorter than min_duration_seconds, or with no altitude data
+        on any point, are still created and their positions still tagged
+        (to preserve that idempotency), but marked discarded so they're
+        excluded from display queries.
         """
         first, last = points[0], points[-1]
+        duration = last.recorded_at - first.recorded_at
+        has_altitude = any(
+            point.altitude_m is not None
+            or point.geometric_altitude is not None
+            or point.barometric_altitude is not None
+            for point in points
+        )
+        discarded = duration < timedelta(seconds=min_duration_seconds) or not has_altitude
         async with get_session() as session:
             async with session.begin():
                 departure_airport_id = await self._match_airport(
@@ -83,6 +97,7 @@ class FlightRepository:
                     position_count=len(points),
                     departure_airport_id=departure_airport_id,
                     arrival_airport_id=arrival_airport_id,
+                    discarded=discarded,
                 )
                 session.add(flight)
                 await session.flush()

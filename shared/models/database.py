@@ -3,7 +3,7 @@ from typing import Any
 
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import (BigInteger, Column, DateTime, Float, ForeignKey, Index,
+from sqlalchemy import (BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Index,
                         Integer, String, Table, Text, UniqueConstraint, func, text)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -89,7 +89,7 @@ class Flight(Base):
     __tablename__ = "flights"
     __table_args__ = (
         Index("flights_transponder_code_idx", "transponder_code"),
-        Index("flights_started_at_idx", "started_at"),
+        Index("flights_started_at_idx", "started_at", postgresql_where=text("NOT discarded")),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -100,6 +100,10 @@ class Flight(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     position_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    # True for flights shorter than MIN_FLIGHT_DURATION_SECONDS or with no
+    # altitude data on any point: kept (not deleted) so their positions stay
+    # tagged and out of the aircraft_positions_unclosed_idx working set.
+    discarded: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     departure_airport_id: Mapped[int | None] = mapped_column(
         ForeignKey("airports.id", ondelete="SET NULL")
     )

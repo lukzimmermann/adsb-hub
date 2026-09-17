@@ -13,6 +13,7 @@ class FlightRepository:
         async with get_session() as session:
             result = await session.scalars(
                 select(Flight)
+                .where(Flight.discarded.is_(False))
                 .options(
                     selectinload(Flight.departure_airport),
                     selectinload(Flight.arrival_airport),
@@ -40,6 +41,7 @@ class FlightRepository:
                 .where(
                     AircraftGroup.name == name,
                     AircraftGroup.owner_user_id == owner_user_id,
+                    Flight.discarded.is_(False),
                 )
                 .options(
                     selectinload(Flight.departure_airport),
@@ -54,7 +56,7 @@ class FlightRepository:
         async with get_session() as session:
             return await session.scalar(
                 select(Flight)
-                .where(Flight.id == flight_id)
+                .where(Flight.id == flight_id, Flight.discarded.is_(False))
                 .options(
                     selectinload(Flight.positions),
                     selectinload(Flight.departure_airport),

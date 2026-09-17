@@ -24,6 +24,7 @@ async def main() -> None:
         FlightRepository(),
         settings.gap_threshold_seconds,
         settings.airport_match_radius_meters,
+        settings.min_flight_duration_seconds,
     )
     logger.info("Starting ADS-B flight segmentation")
     try:

@@ -38,10 +38,12 @@ class FlightSegmentationService:
         repository: FlightRepository,
         gap_threshold_seconds: float,
         airport_match_radius_meters: float,
+        min_flight_duration_seconds: float,
     ) -> None:
         self.repository = repository
         self.gap_threshold = timedelta(seconds=gap_threshold_seconds)
         self.airport_match_radius_meters = airport_match_radius_meters
+        self.min_flight_duration_seconds = min_flight_duration_seconds
 
     async def close_once(self) -> FlightCloseStats:
         """Close all flights whose aircraft has gone quiet; return one snapshot."""
@@ -61,7 +63,10 @@ class FlightSegmentationService:
                 if segment[-1].recorded_at >= datetime.now(timezone.utc) - self.gap_threshold:
                     continue
                 await self.repository.close_segment(
-                    transponder_code, segment, self.airport_match_radius_meters
+                    transponder_code,
+                    segment,
+                    self.airport_match_radius_meters,
+                    self.min_flight_duration_seconds,
                 )
                 closed_flights += 1
 
