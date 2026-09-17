@@ -1,17 +1,24 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useFlights } from "../api/queries";
 import { useAuth } from "../auth/AuthContext";
 import { GroupSelect } from "../components/GroupSelect";
 import { formatDuration } from "../lib/format";
-import { card, mutedText, pageTitle } from "../ui";
+import { matchesAircraftQuery } from "../lib/aircraftSearch";
+import { card, input, mutedText, pageTitle } from "../ui";
 
 export function FlightsPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [groupName, setGroupName] = useState<string | null>(searchParams.get("group"));
+  const [searchValue, setSearchValue] = useState("");
   const { data: flights, isLoading, isError } = useFlights(groupName);
+
+  const filteredFlights = useMemo(
+    () => flights?.filter((flight) => matchesAircraftQuery(flight, searchValue)),
+    [flights, searchValue],
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
@@ -20,12 +27,20 @@ export function FlightsPage() {
         {user && <GroupSelect value={groupName} onChange={setGroupName} />}
       </div>
 
+      <input
+        type="text"
+        placeholder="Suche nach Registration, Callsign oder Transponder-Code…"
+        className={`w-full py-1.5 text-sm ${input}`}
+        value={searchValue}
+        onChange={(event) => setSearchValue(event.target.value)}
+      />
+
       {isLoading && <p className={mutedText}>Lädt…</p>}
       {isError && <p className="text-rose-400">Fehler beim Laden.</p>}
-      {flights?.length === 0 && <p className={mutedText}>Keine Flüge gefunden.</p>}
+      {filteredFlights?.length === 0 && <p className={mutedText}>Keine Flüge gefunden.</p>}
 
       <div className={`divide-y divide-white/5 ${card}`}>
-        {flights?.map((flight) => (
+        {filteredFlights?.map((flight) => (
           <Link
             key={flight.id}
             to={`/flights/${flight.id}`}

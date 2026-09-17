@@ -1,6 +1,10 @@
-import type { AircraftPositionResponse } from "../api/types";
+interface SearchableAircraft {
+  registration: string | null;
+  callsign: string | null;
+  transponder_code: string;
+}
 
-export function matchesAircraftQuery(aircraft: AircraftPositionResponse, query: string): boolean {
+export function matchesAircraftQuery(aircraft: SearchableAircraft, query: string): boolean {
   const trimmed = query.trim().toLowerCase();
   if (trimmed.length === 0) return true;
   return (
