@@ -4,7 +4,7 @@ from typing import Any
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import (BigInteger, Column, DateTime, Float, ForeignKey, Index,
-                        Integer, String, Table, Text, UniqueConstraint, func)
+                        Integer, String, Table, Text, UniqueConstraint, func, text)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -66,6 +66,57 @@ class AircraftRegistration(Base):
     )
 
 
+class Airport(Base):
+    __tablename__ = "airports"
+    __table_args__ = (
+        Index("airports_position_idx", "position", postgresql_using="gist"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    icao_code: Mapped[str | None] = mapped_column(String(4), unique=True)
+    iata_code: Mapped[str | None] = mapped_column(String(3))
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    country_code: Mapped[str | None] = mapped_column(String(2))
+    position: Mapped[WKTElement] = mapped_column(
+        Geography(geometry_type="POINT", srid=4326, spatial_index=False),
+        nullable=False,
+    )
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class Flight(Base):
+    __tablename__ = "flights"
+    __table_args__ = (
+        Index("flights_transponder_code_idx", "transponder_code"),
+        Index("flights_started_at_idx", "started_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    transponder_code: Mapped[str] = mapped_column(Text, nullable=False)
+    registration: Mapped[str | None] = mapped_column(Text)
+    callsign: Mapped[str | None] = mapped_column(Text)
+    aircraft_type: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    position_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    departure_airport_id: Mapped[int | None] = mapped_column(
+        ForeignKey("airports.id", ondelete="SET NULL")
+    )
+    arrival_airport_id: Mapped[int | None] = mapped_column(
+        ForeignKey("airports.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    departure_airport: Mapped[Airport | None] = relationship(foreign_keys=[departure_airport_id])
+    arrival_airport: Mapped[Airport | None] = relationship(foreign_keys=[arrival_airport_id])
+    positions: Mapped[list["AircraftPosition"]] = relationship(
+        back_populates="flight", order_by="AircraftPosition.recorded_at"
+    )
+
+
 class AircraftPosition(Base):
     __tablename__ = "aircraft_positions"
     __table_args__ = (
@@ -75,6 +126,18 @@ class AircraftPosition(Base):
             postgresql_using="gist",
         ),
         Index("aircraft_positions_recorded_at_idx", "recorded_at"),
+        Index(
+            "aircraft_positions_unclosed_idx",
+            "transponder_code",
+            "recorded_at",
+            postgresql_where=text("flight_id IS NULL"),
+        ),
+        Index(
+            "aircraft_positions_flight_id_idx",
+            "flight_id",
+            "recorded_at",
+            postgresql_where=text("flight_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -125,6 +188,10 @@ class AircraftPosition(Base):
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    flight_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("flights.id", ondelete="SET NULL")
+    )
+    flight: Mapped[Flight | None] = relationship(back_populates="positions")
 
     @classmethod
     def from_aircraft(cls, aircraft: Aircraft) -> "AircraftPosition":

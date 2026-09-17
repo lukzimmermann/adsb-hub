@@ -48,6 +48,50 @@ class AircraftPositionResponse(BaseModel):
     recorded_at: datetime
 
 
+class AirportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    icao_code: str | None = None
+    iata_code: str | None = None
+    name: str
+    country_code: str | None = None
+    latitude: float
+    longitude: float
+
+
+class AirportWriteRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    icao_code: str | None = Field(default=None, min_length=1, max_length=4)
+    iata_code: str | None = Field(default=None, min_length=1, max_length=3)
+    country_code: str | None = Field(default=None, min_length=1, max_length=2)
+
+
+class RecalculateFlightsResponse(BaseModel):
+    updated_flights: int
+
+
+class FlightResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    transponder_code: str
+    registration: str | None = None
+    callsign: str | None = None
+    aircraft_type: str | None = None
+    started_at: datetime
+    ended_at: datetime
+    position_count: int
+    departure_airport: AirportResponse | None = None
+    arrival_airport: AirportResponse | None = None
+
+
+class FlightDetailResponse(FlightResponse):
+    positions: list[AircraftPositionResponse]
+
+
 class GroupCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
 

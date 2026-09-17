@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from api.auth import AuthenticatedUser, get_current_user
-from api.repositories import GroupRepository
-from api.schemas import (AircraftPositionResponse, GroupCreateRequest,
-                         GroupResponse, RegistrationRequest)
-from api.services import (GroupAlreadyExistsError, GroupNotFoundError,
-                          GroupService)
+from api.repositories import FlightRepository, GroupRepository
+from api.routers.flights import to_response as to_flight_response
+from api.schemas import (AircraftPositionResponse, FlightResponse,
+                         GroupCreateRequest, GroupResponse,
+                         RegistrationRequest)
+from api.services import (FlightService, GroupAlreadyExistsError,
+                          GroupNotFoundError, GroupService)
 
 router = APIRouter(prefix="/api/v1/groups", tags=["groups"])
 service = GroupService(GroupRepository())
+flight_service = FlightService(FlightRepository(), GroupRepository())
 
 
 def to_response(group) -> GroupResponse:
@@ -52,6 +55,19 @@ async def get_group_aircraft(
         return await service.current_aircraft(group_name, user.id)
     except GroupNotFoundError as error:
         raise HTTPException(status_code=404, detail="Group not found") from error
+
+
+@router.get("/{group_name}/flights", response_model=list[FlightResponse])
+async def get_group_flights(
+    group_name: str,
+    limit: int = Query(default=100, ge=1, le=5000),
+    user: AuthenticatedUser = Depends(get_current_user),
+) -> list[FlightResponse]:
+    try:
+        flights = await flight_service.list_by_group(group_name, user.id, limit)
+    except GroupNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Group not found") from error
+    return [to_flight_response(flight) for flight in flights]
 
 
 @router.post("/{group_name}/registrations", response_model=GroupResponse)

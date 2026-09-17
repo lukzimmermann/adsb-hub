@@ -72,5 +72,16 @@ services:
         condition: service_completed_successfully
     command: ["uv", "run", "python", "-m", "collector.main"]
 
+  flight-processor:
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-adsb}:${POSTGRES_PASSWORD:-adsb}@postgres:5432/${POSTGRES_DB:-adsb}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["uv", "run", "python", "-m", "flights.main"]
+
 volumes:
   postgres_data:
