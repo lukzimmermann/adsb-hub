@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import cast, func, select, update
+from sqlalchemy import cast, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
@@ -108,6 +108,36 @@ class FlightRepository:
                 )
             await session.refresh(flight)
             return flight
+
+    async def discard_short_or_no_altitude_flights(self, min_duration_seconds: float) -> int:
+        """Retroactively mark existing flights as discarded, mirroring the
+        check close_segment applies to new ones: too short, or no altitude
+        data on any of their positions. Positions are left tagged as-is.
+        """
+        async with get_session() as session:
+            async with session.begin():
+                result = await session.execute(
+                    update(Flight)
+                    .where(
+                        Flight.discarded.is_(False),
+                        or_(
+                            Flight.ended_at - Flight.started_at
+                            < timedelta(seconds=min_duration_seconds),
+                            ~exists(
+                                select(1).where(
+                                    AircraftPosition.flight_id == Flight.id,
+                                    or_(
+                                        AircraftPosition.altitude_m.is_not(None),
+                                        AircraftPosition.geometric_altitude.is_not(None),
+                                        AircraftPosition.barometric_altitude.is_not(None),
+                                    ),
+                                )
+                            ),
+                        ),
+                    )
+                    .values(discarded=True)
+                )
+                return result.rowcount
 
     async def recalculate_airports(self, radius_meters: float) -> int:
         """Re-match departure/arrival airports for every existing flight.
