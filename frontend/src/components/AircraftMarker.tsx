@@ -28,7 +28,8 @@ export function AircraftMarker({ aircraft, highlighted = false, onSelect }: Prop
   if (aircraft.latitude === null || aircraft.longitude === null) {
     return null;
   }
-  const rotation = aircraft.true_heading ?? aircraft.track ?? 0;
+  // The ✈️ glyph's neutral orientation points northeast (~45°), so offset the heading to compensate.
+  const rotation = (aircraft.true_heading ?? aircraft.track ?? 0) - 45;
 
   return (
     <Marker
