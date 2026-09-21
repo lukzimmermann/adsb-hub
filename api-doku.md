@@ -19,6 +19,13 @@ Ohne Login: rate-limited auf 1 Request / 60s pro IP. Mit gültigem Cookie: kein 
 ## GET    /api/v1/aircraft/{registration}/history?limit=100
 Letzten entries von einem spezifischen flugzeug.
 
+## GET    /api/v1/aircraft/{registration}/current-flight
+Alle Positionen des laufenden Flugs (neueste zuerst), rückwärts von jetzt bis zu einer Lücke
+von `FLIGHT_GAP_THRESHOLD_SECONDS`.
+
+## GET    /api/v1/config
+Client-Konfiguration: `{"poll_interval_seconds": 15}` (`POLL_INTERVAL_SECONDS`).
+
 ## Gruppen (Login erforderlich)
 Gruppen gehören dem User, der sie erstellt hat. Jeder User sieht/verwaltet nur seine eigenen.
 

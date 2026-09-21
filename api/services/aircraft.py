@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from shared.models import AircraftPosition
 from shared.repositories import AircraftPositionRepository
 
@@ -8,6 +10,9 @@ class AircraftService:
 
     async def get_current(self) -> list[AircraftPosition]:
         return await self.repository.get_current()
+
+    async def get_current_flight(self, registration: str, gap_seconds: float) -> list[AircraftPosition]:
+        return await self.repository.get_current_flight(registration, timedelta(seconds=gap_seconds))
 
     async def get_history(self, registration: str, limit: int) -> list[AircraftPosition]:
         return await self.repository.get_history(registration, limit)

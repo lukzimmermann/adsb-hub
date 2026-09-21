@@ -1,4 +1,6 @@
+import itertools
 from collections.abc import Sequence
+from datetime import timedelta
 
 from sqlalchemy import func, select
 
@@ -28,6 +30,34 @@ class AircraftPositionRepository:
                 .limit(limit)
             )
             return list(result.all())
+
+    async def get_current_flight(
+        self, registration: str, gap: timedelta
+    ) -> list[AircraftPosition]:
+        """Newest-first positions back from now until a gap >= `gap` (the same
+        rule the flight processor uses to split flights).
+
+        Only looks at not-yet-closed positions (flight_id IS NULL): an
+        aircraft that is currently flying has not been closed into a flight
+        yet, and this keeps the query on aircraft_positions_unclosed_idx.
+        """
+        async with get_session() as session:
+            result = await session.scalars(
+                select(AircraftPosition)
+                .where(
+                    AircraftPosition.registration == registration,
+                    AircraftPosition.flight_id.is_(None),
+                )
+                .order_by(AircraftPosition.recorded_at.desc())
+            )
+            positions = list(result.all())
+
+        current_flight = positions[:1]
+        for newer, older in itertools.pairwise(positions):
+            if newer.recorded_at - older.recorded_at >= gap:
+                break
+            current_flight.append(older)
+        return current_flight
 
     async def save_all(self, aircraft_list: Sequence[Aircraft]) -> int:
         """Store all aircraft with a valid position and return the row count."""

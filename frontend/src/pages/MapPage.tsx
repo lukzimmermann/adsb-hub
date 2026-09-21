@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useAircraftHistory, useCurrentAircraft, useGroupAircraft } from "../api/queries";
+import { useCurrentFlightTrail, useCurrentAircraft, useGroupAircraft } from "../api/queries";
 import type { AircraftPositionResponse } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { AircraftDetailPanel } from "../components/AircraftDetailPanel";
@@ -19,7 +19,7 @@ export function MapPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [groupName, setGroupName] = useState<string | null>(searchParams.get("group"));
-  const [selected, setSelected] = useState<AircraftPositionResponse | null>(null);
+  const [selectedSnapshot, setSelected] = useState<AircraftPositionResponse | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [scrubPosition, setScrubPosition] = useState<HoverPosition | null>(null);
   const [searchValue, setSearchValue] = useState("");
@@ -29,9 +29,17 @@ export function MapPage() {
   const allAircraft = useCurrentAircraft(user !== null && user !== undefined, groupName === null);
   const groupAircraft = useGroupAircraft(groupName);
   const { data: aircraft, isLoading, isError } = groupName === null ? allAircraft : groupAircraft;
-  const { data: history } = useAircraftHistory(selected?.registration ?? null);
 
   const list = aircraft ?? [];
+  // Follow the selected aircraft across polls: each poll returns fresh rows
+  // with new ids, so the clicked snapshot alone would go stale.
+  const selected = useMemo(
+    () =>
+      selectedSnapshot &&
+      (list.find((a) => a.transponder_code === selectedSnapshot.transponder_code) ?? selectedSnapshot),
+    [list, selectedSnapshot],
+  );
+  const { data: history } = useCurrentFlightTrail(selected?.registration ?? null);
   const filteredList = useMemo(
     () => (filterQuery ? list.filter((a) => matchesAircraftQuery(a, filterQuery)) : list),
     [list, filterQuery],

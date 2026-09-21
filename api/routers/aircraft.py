@@ -23,6 +23,11 @@ async def get_current_aircraft(
     return await service.get_current()
 
 
+@router.get("/{registration}/current-flight", response_model=list[AircraftPositionResponse])
+async def get_aircraft_current_flight(registration: str) -> list[AircraftPositionResponse]:
+    return await service.get_current_flight(registration, settings.flight_gap_threshold_seconds)
+
+
 @router.get("/{registration}/history", response_model=list[AircraftPositionResponse])
 async def get_aircraft_history(
     registration: str,

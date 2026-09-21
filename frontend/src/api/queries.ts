@@ -5,6 +5,7 @@ import type {
   AircraftPositionResponse,
   AirportResponse,
   AirportWriteRequest,
+  ConfigResponse,
   FlightDetailResponse,
   FlightResponse,
   GroupResponse,
@@ -15,9 +16,23 @@ import type {
 // Anonymous /aircraft calls are rate-limited server-side to one request per
 // AIRCRAFT_RATE_LIMIT_SECONDS (default 60s, see api/rate_limit.py). Poll
 // slower than that when logged out; authenticated calls aren't limited, so
-// poll at roughly the collector's own cadence (POLL_INTERVAL_SECONDS, 15s).
-const AUTHENTICATED_POLL_MS = 15_000;
+// poll at the collector's own cadence (POLL_INTERVAL_SECONDS, served by
+// GET /config; DEFAULT_POLL_MS until it has loaded).
+const DEFAULT_POLL_MS = 15_000;
 const ANONYMOUS_POLL_MS = 65_000;
+
+export function useConfig() {
+  return useQuery({
+    queryKey: ["config"],
+    queryFn: () => api.get<ConfigResponse>("/config"),
+    staleTime: Infinity,
+  });
+}
+
+function usePollMs(): number {
+  const { data } = useConfig();
+  return data ? data.poll_interval_seconds * 1000 : DEFAULT_POLL_MS;
+}
 
 export function useMe() {
   return useQuery({
@@ -46,20 +61,22 @@ export function useLogout() {
 }
 
 export function useCurrentAircraft(isAuthenticated: boolean, enabled = true) {
+  const pollMs = usePollMs();
   return useQuery({
     queryKey: ["aircraft", "current"],
     queryFn: () => api.get<AircraftPositionResponse[]>("/aircraft"),
-    refetchInterval: isAuthenticated ? AUTHENTICATED_POLL_MS : ANONYMOUS_POLL_MS,
+    refetchInterval: isAuthenticated ? pollMs : ANONYMOUS_POLL_MS,
     enabled,
   });
 }
 
 export function useGroupAircraft(groupName: string | null) {
+  const pollMs = usePollMs();
   return useQuery({
     queryKey: ["aircraft", "group", groupName],
     queryFn: () => api.get<AircraftPositionResponse[]>(`/groups/${encodeURIComponent(groupName!)}/aircraft`),
     enabled: groupName !== null,
-    refetchInterval: AUTHENTICATED_POLL_MS,
+    refetchInterval: pollMs,
   });
 }
 
@@ -104,13 +121,13 @@ export function useRemoveRegistration(groupName: string) {
   });
 }
 
-export function useFlights(groupName: string | null) {
+export function useFlights(groupName: string | null, limit = 200) {
   return useQuery({
-    queryKey: ["flights", groupName],
+    queryKey: ["flights", groupName, limit],
     queryFn: () =>
       groupName === null
-        ? api.get<FlightResponse[]>("/flights?limit=200")
-        : api.get<FlightResponse[]>(`/groups/${encodeURIComponent(groupName)}/flights?limit=200`),
+        ? api.get<FlightResponse[]>("/flights?limit=${limit}")
+        : api.get<FlightResponse[]>(`/groups/${encodeURIComponent(groupName)}/flights?limit=${limit}`),
   });
 }
 
@@ -121,14 +138,18 @@ export function useFlight(flightId: number) {
   });
 }
 
-export function useAircraftHistory(registration: string | null, limit = 200) {
+// All positions of the aircraft's current flight (newest first), refreshed at
+// the collector's cadence so the trail grows as new positions arrive.
+export function useCurrentFlightTrail(registration: string | null) {
+  const pollMs = usePollMs();
   return useQuery({
-    queryKey: ["aircraft", "history", registration, limit],
+    queryKey: ["aircraft", "current-flight", registration],
     queryFn: () =>
       api.get<AircraftPositionResponse[]>(
-        `/aircraft/${encodeURIComponent(registration!)}/history?limit=${limit}`,
+        `/aircraft/${encodeURIComponent(registration!)}/current-flight`,
       ),
     enabled: registration !== null,
+    refetchInterval: pollMs,
   });
 }
 

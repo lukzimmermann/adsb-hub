@@ -48,6 +48,10 @@ class AircraftPositionResponse(BaseModel):
     recorded_at: datetime
 
 
+class ConfigResponse(BaseModel):
+    poll_interval_seconds: float
+
+
 class AirportResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

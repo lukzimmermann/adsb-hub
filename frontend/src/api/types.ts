@@ -42,6 +42,10 @@ export interface AircraftPositionResponse {
   recorded_at: string;
 }
 
+export interface ConfigResponse {
+  poll_interval_seconds: number;
+}
+
 export interface GroupResponse {
   name: string;
   registrations: string[];
