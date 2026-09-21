@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import { useFlights, useGroupAircraft } from "../api/queries";
 import type { GroupResponse } from "../api/types";
-import { countFlightsPerDay, isToday } from "../lib/flightsPerDay";
+import { countFlightsPerDay, isToday, startOfDaysAgo } from "../lib/flightsPerDay";
 import { summarizeFlights } from "../lib/flightSummary";
 import { formatMinutes } from "../lib/format";
 import { StatTile } from "./StatTile";
@@ -14,11 +14,11 @@ const FlightsPerDayChart = lazy(() =>
   import("./FlightsPerDayChart").then((mod) => ({ default: mod.FlightsPerDayChart })),
 );
 
-const CHART_DAYS = 14;
+const CHART_DAYS = 30;
 
 export function GroupDashboardCard({ group }: { group: GroupResponse }) {
   const { data: airborne, isLoading: isAirborneLoading } = useGroupAircraft(group.name);
-  const { data: flights, isLoading: isFlightsLoading } = useFlights(group.name, 1000);
+  const { data: flights, isLoading: isFlightsLoading } = useFlights(group.name, startOfDaysAgo(CHART_DAYS - 1));
   // The tiles only cover today; the chart shows the daily trend.
   const summary = useMemo(() => summarizeFlights((flights ?? []).filter((f) => isToday(f.started_at))), [flights]);
   const perDay = useMemo(() => countFlightsPerDay(flights ?? [], CHART_DAYS), [flights]);
@@ -80,14 +80,12 @@ export function GroupDashboardCard({ group }: { group: GroupResponse }) {
         </Suspense>
       </div>
 
-      {summary.lastFlight && (
-        <Link
-          to={`/flights/${summary.lastFlight.id}`}
-          className="mt-3 inline-block text-sm text-indigo-300 hover:text-indigo-200"
-        >
-          Letzten Flug von heute ansehen →
-        </Link>
-      )}
+      <Link
+        to={`/flights?group=${encodeURIComponent(group.name)}`}
+        className="mt-3 inline-block text-sm text-indigo-300 hover:text-indigo-200"
+      >
+        Zu den Flügen →
+      </Link>
       {group.registrations.length === 0 && (
         <p className={`mt-2 text-sm ${mutedText}`}>Noch keine Registrierungen in dieser Gruppe.</p>
       )}

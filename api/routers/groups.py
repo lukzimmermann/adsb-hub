@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from api.auth import AuthenticatedUser, get_current_user
@@ -61,10 +63,11 @@ async def get_group_aircraft(
 async def get_group_flights(
     group_name: str,
     limit: int = Query(default=100, ge=1, le=5000),
+    since: datetime | None = Query(default=None),
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> list[FlightResponse]:
     try:
-        flights = await flight_service.list_by_group(group_name, user.id, limit)
+        flights = await flight_service.list_by_group(group_name, user.id, limit, since)
     except GroupNotFoundError as error:
         raise HTTPException(status_code=404, detail="Group not found") from error
     return [to_flight_response(flight) for flight in flights]

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -8,12 +9,16 @@ from shared.models import AircraftGroup, AircraftRegistration, Flight
 from shared.models.database import group_registrations
 
 
+def _since_filter(since: datetime | None) -> list:
+    return [Flight.started_at >= since] if since is not None else []
+
+
 class FlightRepository:
-    async def list_flights(self, limit: int) -> Sequence[Flight]:
+    async def list_flights(self, limit: int, since: datetime | None = None) -> Sequence[Flight]:
         async with get_session() as session:
             result = await session.scalars(
                 select(Flight)
-                .where(Flight.discarded.is_(False))
+                .where(Flight.discarded.is_(False), *_since_filter(since))
                 .options(
                     selectinload(Flight.departure_airport),
                     selectinload(Flight.arrival_airport),
@@ -24,7 +29,7 @@ class FlightRepository:
             return list(result.all())
 
     async def list_flights_by_group(
-        self, name: str, owner_user_id: int, limit: int
+        self, name: str, owner_user_id: int, limit: int, since: datetime | None = None
     ) -> Sequence[Flight]:
         async with get_session() as session:
             result = await session.scalars(
@@ -42,6 +47,7 @@ class FlightRepository:
                     AircraftGroup.name == name,
                     AircraftGroup.owner_user_id == owner_user_id,
                     Flight.discarded.is_(False),
+                    *_since_filter(since),
                 )
                 .options(
                     selectinload(Flight.departure_airport),

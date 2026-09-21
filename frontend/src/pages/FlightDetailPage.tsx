@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { useFlight } from "../api/queries";
 import type { HoverPosition } from "../components/AircraftMetricsChart";
@@ -23,6 +23,8 @@ function airportLabel(airport: { icao_code: string | null; name: string } | null
 
 export function FlightDetailPage() {
   const { flightId } = useParams<{ flightId: string }>();
+  const [searchParams] = useSearchParams();
+  const backQuery = searchParams.toString();
   const { data: flight, isLoading, isError } = useFlight(Number(flightId));
   const [scrubPosition, setScrubPosition] = useState<HoverPosition | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -34,7 +36,7 @@ export function FlightDetailPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-white/5 bg-slate-900/80 px-4 py-3 backdrop-blur">
-        <Link to="/flights" className={`text-sm ${mutedText} hover:text-white`}>
+        <Link to={`/flights${backQuery ? `?${backQuery}` : ""}`} className={`text-sm ${mutedText} hover:text-white`}>
           ← Zurück zu Flügen
         </Link>
         <h1 className="mt-1 text-xl font-semibold text-white">

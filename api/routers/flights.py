@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, Query
 
 from api.repositories import FlightRepository, GroupRepository
@@ -39,8 +41,9 @@ def to_detail_response(flight: Flight) -> FlightDetailResponse:
 @router.get("", response_model=list[FlightResponse])
 async def list_flights(
     limit: int = Query(default=100, ge=1, le=5000),
+    since: datetime | None = Query(default=None),
 ) -> list[FlightResponse]:
-    return [to_response(flight) for flight in await service.list_flights(limit)]
+    return [to_response(flight) for flight in await service.list_flights(limit, since)]
 
 
 @router.get("/{flight_id}", response_model=FlightDetailResponse)

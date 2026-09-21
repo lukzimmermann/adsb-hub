@@ -4,16 +4,28 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useFlights } from "../api/queries";
 import { useAuth } from "../auth/AuthContext";
 import { GroupSelect } from "../components/GroupSelect";
+import { FLIGHT_RANGES, parseFlightRange, rangeSince } from "../lib/flightsPerDay";
 import { formatDuration } from "../lib/format";
 import { matchesAircraftQuery } from "../lib/aircraftSearch";
 import { card, input, mutedText, pageTitle } from "../ui";
 
 export function FlightsPage() {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [groupName, setGroupName] = useState<string | null>(searchParams.get("group"));
+  // Group and time range live in the URL so the detail page can link back
+  // to the same filtered list.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const groupName = searchParams.get("group");
+  const range = parseFlightRange(searchParams.get("range"));
   const [searchValue, setSearchValue] = useState("");
-  const { data: flights, isLoading, isError } = useFlights(groupName);
+  const { data: flights, isLoading, isError } = useFlights(groupName, rangeSince(range));
+
+  function updateFilter(key: "group" | "range", value: string | null) {
+    const next = new URLSearchParams(searchParams);
+    if (value === null) next.delete(key);
+    else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  }
+  const detailQuery = searchParams.toString();
 
   const filteredFlights = useMemo(
     () => flights?.filter((flight) => matchesAircraftQuery(flight, searchValue)),
@@ -24,7 +36,21 @@ export function FlightsPage() {
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className={pageTitle}>Flüge</h1>
-        {user && <GroupSelect value={groupName} onChange={setGroupName} />}
+        {user && <GroupSelect value={groupName} onChange={(name) => updateFilter("group", name)} />}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {FLIGHT_RANGES.map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => updateFilter("range", value)}
+            className={`rounded-full px-3 py-1 text-sm transition-colors ${
+              range === value ? "bg-indigo-500 text-white" : "bg-white/5 text-slate-300 hover:bg-white/10"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <input
@@ -43,7 +69,7 @@ export function FlightsPage() {
         {filteredFlights?.map((flight) => (
           <Link
             key={flight.id}
-            to={`/flights/${flight.id}`}
+            to={`/flights/${flight.id}${detailQuery ? `?${detailQuery}` : ""}`}
             className="flex items-center justify-between gap-4 px-4 py-3 transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-white/5"
           >
             <div>

@@ -121,13 +121,16 @@ export function useRemoveRegistration(groupName: string) {
   });
 }
 
-export function useFlights(groupName: string | null, limit = 200) {
+// since: ISO timestamp; only flights started at or after it are returned.
+export function useFlights(groupName: string | null, since: string | null, limit = 1000) {
   return useQuery({
-    queryKey: ["flights", groupName, limit],
-    queryFn: () =>
-      groupName === null
-        ? api.get<FlightResponse[]>("/flights?limit=${limit}")
-        : api.get<FlightResponse[]>(`/groups/${encodeURIComponent(groupName)}/flights?limit=${limit}`),
+    queryKey: ["flights", groupName, since, limit],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (since !== null) params.set("since", since);
+      const base = groupName === null ? "/flights" : `/groups/${encodeURIComponent(groupName)}/flights`;
+      return api.get<FlightResponse[]>(`${base}?${params}`);
+    },
   });
 }
 

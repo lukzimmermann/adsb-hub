@@ -13,6 +13,39 @@ export function localDayKey(date: Date): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+export type FlightRange = "today" | "7d" | "30d" | "all";
+
+export const FLIGHT_RANGES: Array<[FlightRange, string]> = [
+  ["today", "Heute"],
+  ["7d", "7 Tage"],
+  ["30d", "30 Tage"],
+  ["all", "Alle"],
+];
+
+export function parseFlightRange(value: string | null): FlightRange {
+  return FLIGHT_RANGES.some(([range]) => range === value) ? (value as FlightRange) : "today";
+}
+
+// Start of the local day `days` days ago as ISO string. Deterministic within
+// a day, so it is safe to use in a query key.
+export function startOfDaysAgo(days: number, now = new Date()): string {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - days).toISOString();
+}
+
+// null = no lower limit.
+export function rangeSince(range: FlightRange): string | null {
+  switch (range) {
+    case "today":
+      return startOfDaysAgo(0);
+    case "7d":
+      return startOfDaysAgo(6);
+    case "30d":
+      return startOfDaysAgo(29);
+    case "all":
+      return null;
+  }
+}
+
 export function isToday(iso: string, now = new Date()): boolean {
   return localDayKey(new Date(iso)) === localDayKey(now);
 }

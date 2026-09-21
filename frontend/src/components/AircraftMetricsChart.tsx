@@ -97,13 +97,13 @@ function MetricChart({
               new Date(value).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })
             }
             stroke="#475569"
-            tick={{ fontSize: 10, fill: "#64748b" }}
+            tick={{ fontSize: 10, fill: "#cbd5e1" }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
             stroke="#475569"
-            tick={{ fontSize: 10, fill: "#64748b" }}
+            tick={{ fontSize: 10, fill: "#cbd5e1" }}
             width={36}
             axisLine={false}
             tickLine={false}
@@ -116,7 +116,10 @@ function MetricChart({
               border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: 8,
               fontSize: 12,
+              color: "#e2e8f0",
             }}
+            labelStyle={{ color: "#e2e8f0" }}
+            itemStyle={{ color: "#e2e8f0" }}
             labelFormatter={(value) => new Date(value as number).toLocaleTimeString("de-CH")}
             formatter={(value) => [`${value} ${meta.unit}`, meta.label]}
           />
